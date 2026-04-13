@@ -1,1 +1,66 @@
-print("hey! buddy")
+from google import genai
+from dotenv import load_dotenv
+import os
+import math
+
+def cosine_similarity(vec1, vec2):
+    dot_product = 0.0
+    norm_a = 0.0
+    norm_b = 0.0
+
+    for a, b in zip(vec1, vec2):
+        dot_product += a * b
+        norm_a += a * a
+        norm_b += b * b
+
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+
+    return dot_product / (math.sqrt(norm_a) * math.sqrt(norm_b))
+
+# Load API key
+load_dotenv()
+
+if not os.getenv("GOOGLE_API_KEY"):
+    raise ValueError("GOOGLE_API_KEY not found")
+
+client = genai.Client()
+
+sentences = [
+    "The quick brown fox jumps over the lazy dog.", 
+    "The lazy dog is sleeping.",
+    "The fox is quick and clever.",
+    "The dog is lazy but loyal.",
+    "The fox and the dog are friends."
+]
+
+results = client.models.embed_content(
+    model="gemini-embedding-001",
+    contents=sentences
+)
+
+query = "a fast fox"
+
+query_result = client.models.embed_content(
+    model="gemini-embedding-001",
+    contents=[query]
+)
+
+query_vector = query_result.embeddings[0].values
+
+result = []
+
+
+for i, emb in enumerate(results.embeddings):
+    score = cosine_similarity(query_vector, emb.values)
+    result.append((sentences[i], score))
+
+result.sort(key=lambda x: x[1], reverse=True)
+
+print(f"\nQuery: {query}\n")
+
+for text, score in result:
+    print(f"{text} → {score:.4f}")
+
+for text, score in result:
+    print(f"{score:.4f} | {text}")
